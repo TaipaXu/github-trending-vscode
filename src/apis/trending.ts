@@ -5,11 +5,15 @@ interface GitHubReadmeResponse {
     content: string;
 }
 
-export const getTrending = async (since: MTrendingSince): Promise<RequestResponse<string>> => {
+export const getTrending = async (
+    since: MTrendingSince,
+    signal?: AbortSignal,
+): Promise<RequestResponse<string>> => {
     return request<string>({
         url: `https://github.com/trending?since=${since}`,
         method: 'GET',
         responseType: 'text',
+        signal,
     });
 };
 

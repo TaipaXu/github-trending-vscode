@@ -8,6 +8,19 @@ const getErrorDetail = (error: unknown): string => {
     return error instanceof Error ? error.message : 'Failed to load trending repositories';
 };
 
+const isAbortError = (error: unknown): boolean => {
+    if (error instanceof Error && error.name === 'AbortError') {
+        return true;
+    }
+
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        'name' in error &&
+        error.name === 'AbortError'
+    );
+};
+
 export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     private readonly onDidChangeTreeDataEvent = new vscode.EventEmitter<
         vscode.TreeItem | undefined
@@ -15,6 +28,14 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> =
         this.onDidChangeTreeDataEvent.event;
     private since: MTrendingSince | undefined;
+    private readonly cache = new Map<MTrendingSince, vscode.TreeItem[]>();
+    private activeRequest:
+        | {
+              since: MTrendingSince;
+              controller: AbortController;
+              promise: Promise<vscode.TreeItem[]>;
+          }
+        | undefined;
 
     public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
         return element;
@@ -24,11 +45,48 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
         if (this.since === undefined) {
             return [];
         }
-        const nodes: vscode.TreeItem[] = [];
+
+        const cachedNodes = this.cache.get(this.since);
+        if (cachedNodes) {
+            return cachedNodes;
+        }
+
+        if (this.activeRequest?.since === this.since) {
+            return this.activeRequest.promise;
+        }
+
+        this.activeRequest?.controller.abort();
+
+        const since = this.since;
+        const controller = new AbortController();
+        const promise = this.loadTrending(since, controller);
+        this.activeRequest = {
+            since,
+            controller,
+            promise,
+        };
+
+        return promise;
+    }
+
+    public getTrending(since: MTrendingSince): void {
+        this.since = since;
+        if (this.activeRequest?.since !== since) {
+            this.activeRequest?.controller.abort();
+            this.activeRequest = undefined;
+        }
+        this.onDidChangeTreeDataEvent.fire(undefined);
+    }
+
+    private async loadTrending(
+        since: MTrendingSince,
+        controller: AbortController,
+    ): Promise<vscode.TreeItem[]> {
         try {
-            const response = await RGetTrending(this.since);
+            const response = await RGetTrending(since, controller.signal);
             const $ = cheerio.load(response.data);
             const items = $('.Box-row');
+            const nodes: vscode.TreeItem[] = [];
             items.each((_index, item) => {
                 const title = $(item).find('.lh-condensed').text().replace(/\s+/g, '');
                 const [userName, repoName] = title.split('/');
@@ -51,14 +109,27 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
                 };
                 nodes.push(node);
             });
+
+            this.cache.set(since, nodes);
+            if (this.since !== since) {
+                return this.getCurrentNodes();
+            }
+
+            return nodes;
         } catch (error) {
+            if (isAbortError(error)) {
+                return this.getCurrentNodes();
+            }
             vscode.window.showWarningMessage(getErrorDetail(error));
+            return [];
+        } finally {
+            if (this.activeRequest?.controller === controller) {
+                this.activeRequest = undefined;
+            }
         }
-        return nodes;
     }
 
-    public getTrending(since: MTrendingSince): void {
-        this.since = since;
-        this.onDidChangeTreeDataEvent.fire(undefined);
+    private getCurrentNodes(): vscode.TreeItem[] {
+        return this.since === undefined ? [] : (this.cache.get(this.since) ?? []);
     }
 }
