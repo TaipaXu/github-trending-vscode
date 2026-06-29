@@ -10,7 +10,10 @@ const getErrorDetail = (error: unknown): string => {
 
 export const activate = (context: vscode.ExtensionContext): void => {
     const explorerTree: ExplorerTree = new ExplorerTree();
-    const treeDataProvider = vscode.window.registerTreeDataProvider('trending', explorerTree);
+    const treeView = vscode.window.createTreeView('trending', {
+        treeDataProvider: explorerTree,
+    });
+    explorerTree.setTreeView(treeView);
 
     let webviewPanel: vscode.WebviewPanel | undefined;
     const getWebviewPanel = (): vscode.WebviewPanel => {
@@ -76,7 +79,7 @@ export const activate = (context: vscode.ExtensionContext): void => {
     };
 
     context.subscriptions.push(
-        treeDataProvider,
+        treeView,
         vscode.commands.registerCommand('github-trending.daily', () => {
             explorerTree.getTrending(MTrendingSince.Daily);
         }),
@@ -85,6 +88,9 @@ export const activate = (context: vscode.ExtensionContext): void => {
         }),
         vscode.commands.registerCommand('github-trending.monthly', () => {
             explorerTree.getTrending(MTrendingSince.Monthly);
+        }),
+        vscode.commands.registerCommand('github-trending.refresh', () => {
+            explorerTree.refresh();
         }),
         vscode.commands.registerCommand(
             'github-trending.select',

@@ -28,6 +28,7 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> =
         this.onDidChangeTreeDataEvent.event;
     private since: MTrendingSince | undefined;
+    private treeView: vscode.TreeView<vscode.TreeItem> | undefined;
     private readonly cache = new Map<MTrendingSince, vscode.TreeItem[]>();
     private activeRequest:
         | {
@@ -41,17 +42,24 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
         return element;
     }
 
+    public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>): void {
+        this.treeView = treeView;
+    }
+
     public async getChildren(): Promise<vscode.TreeItem[]> {
         if (this.since === undefined) {
+            this.setMessage(undefined);
             return [];
         }
 
         const cachedNodes = this.cache.get(this.since);
         if (cachedNodes) {
+            this.setMessage(undefined);
             return cachedNodes;
         }
 
         if (this.activeRequest?.since === this.since) {
+            this.setLoadingMessage(this.since);
             return this.activeRequest.promise;
         }
 
@@ -60,6 +68,7 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
         const since = this.since;
         const controller = new AbortController();
         const promise = this.loadTrending(since, controller);
+        this.setLoadingMessage(since);
         this.activeRequest = {
             since,
             controller,
@@ -75,6 +84,25 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
             this.activeRequest?.controller.abort();
             this.activeRequest = undefined;
         }
+        if (this.cache.has(since)) {
+            this.setMessage(undefined);
+        } else {
+            this.setLoadingMessage(since);
+        }
+        this.onDidChangeTreeDataEvent.fire(undefined);
+    }
+
+    public refresh(): void {
+        if (this.since === undefined) {
+            this.setMessage(undefined);
+            this.onDidChangeTreeDataEvent.fire(undefined);
+            return;
+        }
+
+        this.cache.delete(this.since);
+        this.activeRequest?.controller.abort();
+        this.activeRequest = undefined;
+        this.setLoadingMessage(this.since);
         this.onDidChangeTreeDataEvent.fire(undefined);
     }
 
@@ -115,17 +143,30 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
                 return this.getCurrentNodes();
             }
 
+            this.setMessage(undefined);
             return nodes;
         } catch (error) {
             if (isAbortError(error)) {
                 return this.getCurrentNodes();
             }
-            vscode.window.showWarningMessage(getErrorDetail(error));
+            if (this.since === since) {
+                this.setMessage(`${getErrorDetail(error)}. Run Refresh to try again.`);
+            }
             return [];
         } finally {
             if (this.activeRequest?.controller === controller) {
                 this.activeRequest = undefined;
             }
+        }
+    }
+
+    private setLoadingMessage(since: MTrendingSince): void {
+        this.setMessage(`Loading ${since} trending repositories...`);
+    }
+
+    private setMessage(message: string | undefined): void {
+        if (this.treeView) {
+            this.treeView.message = message;
         }
     }
 

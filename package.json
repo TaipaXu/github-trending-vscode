@@ -68,6 +68,11 @@
                 "title": "M"
             },
             {
+                "command": "github-trending.refresh",
+                "title": "Refresh",
+                "icon": "$(refresh)"
+            },
+            {
                 "command": "github-trending.openInBrowser",
                 "title": "Open in browser",
                 "icon": "$(globe)"
@@ -107,6 +112,11 @@
                     "command": "github-trending.monthly",
                     "when": "view == trending",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "github-trending.refresh",
+                    "when": "view == trending",
+                    "group": "navigation@3"
                 }
             ],
             "view/item/context": [
