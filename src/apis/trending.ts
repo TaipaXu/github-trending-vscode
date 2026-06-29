@@ -1,8 +1,12 @@
 import request, { type RequestResponse } from '../request';
 import { TrendingSince as MTrendingSince } from '../models/trendingSince';
 
-interface GitHubReadmeResponse {
+export interface GitHubReadmeResponse {
     content: string;
+    download_url: string | null;
+    encoding: string;
+    html_url: string;
+    path: string;
 }
 
 export const getTrending = async (

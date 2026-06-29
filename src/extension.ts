@@ -3,6 +3,7 @@ import { marked } from 'marked';
 import { ExplorerTree } from './explorerTree';
 import { getRepoReadmeInfo as RGetRepoReadmeInfo } from './apis/trending';
 import { TrendingSince as MTrendingSince } from './models/trendingSince';
+import { createReadmeWebviewHtml, decodeReadme } from './readmeWebview';
 
 const getErrorDetail = (error: unknown): string => {
     return error instanceof Error ? error.message : 'Failed to load README';
@@ -40,7 +41,9 @@ export const activate = (context: vscode.ExtensionContext): void => {
                 'Github Trending',
                 vscode.ViewColumn.One,
                 {
-                    enableScripts: true,
+                    enableScripts: false,
+                    enableForms: false,
+                    enableCommandUris: false,
                 },
             );
             webviewPanel = panel;
@@ -64,32 +67,17 @@ export const activate = (context: vscode.ExtensionContext): void => {
                 userName,
                 repoName,
             });
-            const readme = Buffer.from(response.data.content, 'base64').toString('utf8');
+            const readme = decodeReadme(response.data);
             const markdown = await marked(readme);
-            const html = `<!DOCTYPE html>
-                <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <title>${repoName}</title>
-                        <base href="https://raw.githubusercontent.com/${userName}/${repoName}/master/">
-                    </head>
-                    <body>
-                        ${markdown}
-
-                        <script>
-                            window.addEventListener('message', (event) => {
-                                if (event.data.type === 'init') {
-                                    window.scroll(0, 0);
-                                }
-                            });
-                        </script>
-                    </body>
-                </html>`;
+            const html = createReadmeWebviewHtml(
+                panel.webview,
+                userName,
+                repoName,
+                response.data,
+                markdown,
+            );
 
             panel.webview.html = html;
-            panel.webview.postMessage({
-                type: 'init',
-            });
         } catch (error) {
             vscode.window.showWarningMessage(getErrorDetail(error));
         }
