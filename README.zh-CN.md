@@ -1,18 +1,18 @@
 # github-trending-vscode
 
-[简体中文](README.zh-CN.md)
+[English](README.md)
 
-See what the GitHub community is most excited about in Visual Studio Code.
+在 Visual Studio Code 中查看 GitHub 社区当前最关注的 Trending 项目。
 
 ![app](./app.png)
 
-## Installation
+## 安装
 
 [GitHub Trending](https://marketplace.visualstudio.com/items?itemName=TaipaXu.github-trending)
 
-## Development & Building
+## 开发与构建
 
-### Prerequisites
+### 环境准备
 
 ```sh
 $ git clone https://github.com/TaipaXu/github-trending-vscode
@@ -20,19 +20,19 @@ $ cd github-trending-vscode
 $ pnpm i
 ```
 
-### Development
+### 开发
 
 ```sh
 $ vp dev
 ```
 
-### Building
+### 构建
 
 ```sh
 $ vp build
 ```
 
-### Packaging
+### 打包
 
 ```sh
 $ vp run package
