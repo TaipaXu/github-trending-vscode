@@ -21,6 +21,25 @@ const isAbortError = (error: unknown): boolean => {
     );
 };
 
+const normalizeText = (value: string): string => {
+    return value.replace(/\s+/g, ' ').trim();
+};
+
+const createTooltip = (
+    description: string,
+    userName: string,
+    repositoryUrl: string,
+): vscode.MarkdownString => {
+    const tooltip = new vscode.MarkdownString(undefined, true);
+    tooltip.appendText(description || 'No description');
+    tooltip.appendMarkdown('\n\n**Author:** ');
+    tooltip.appendText(userName);
+    tooltip.appendMarkdown('\n\n**Link:** ');
+    tooltip.appendMarkdown(`[${repositoryUrl}](${repositoryUrl})`);
+
+    return tooltip;
+};
+
 export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     private readonly onDidChangeTreeDataEvent = new vscode.EventEmitter<
         vscode.TreeItem | undefined
@@ -83,19 +102,37 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
             const items = $('.Box-row');
             const nodes: vscode.TreeItem[] = [];
             items.each((_index, item) => {
-                const title = $(item).find('.lh-condensed').text().replace(/\s+/g, '');
-                const [userName, repoName] = title.split('/');
+                const repositoryLink = $(item).find('h2 a[href]').first();
+                const repositoryPath = repositoryLink.attr('href')?.trim();
+                if (!repositoryPath) {
+                    return;
+                }
+
+                const [userName, repoName] = repositoryPath.replace(/^\/+/, '').split('/');
                 if (!userName || !repoName) {
                     return;
                 }
 
-                const description = $(item).find('.my-1').text().trim();
-                const startCount = $(item).find('a.mr-3').first().text().replace(/\s+/g, '');
-                const language = $(item).find('span[itemprop="programmingLanguage"]').text();
+                const description = normalizeText($(item).find('.my-1').text());
+                const starCount = normalizeText(
+                    $(item).find(`a[href="${repositoryPath}/stargazers"]`).first().text(),
+                );
+                const forkCount = normalizeText(
+                    $(item).find(`a[href="${repositoryPath}/forks"]`).first().text(),
+                );
+                const language = normalizeText(
+                    $(item).find('span[itemprop="programmingLanguage"]').text(),
+                );
+                const repositoryUrl = `https://github.com${repositoryPath}`;
+                const details = [
+                    language,
+                    starCount ? `☆ ${starCount}` : '',
+                    forkCount ? `Fork ${forkCount}` : '',
+                ].filter(Boolean);
 
                 const node = new vscode.TreeItem(repoName, vscode.TreeItemCollapsibleState.None);
-                node.description = `    ☆ ${startCount}`;
-                node.tooltip = description;
+                node.description = details.join('    ');
+                node.tooltip = createTooltip(description, userName, repositoryUrl);
                 node.iconPath = getTreeIcon(language.toLowerCase());
                 node.command = {
                     command: 'github-trending.select',
