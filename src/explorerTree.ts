@@ -27,16 +27,16 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     >();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined> =
         this.onDidChangeTreeDataEvent.event;
-    private since: MTrendingSince | undefined;
     private treeView: vscode.TreeView<vscode.TreeItem> | undefined;
-    private readonly cache = new Map<MTrendingSince, vscode.TreeItem[]>();
+    private cache: vscode.TreeItem[] | undefined;
     private activeRequest:
         | {
-              since: MTrendingSince;
               controller: AbortController;
               promise: Promise<vscode.TreeItem[]>;
           }
         | undefined;
+
+    public constructor(private readonly since: MTrendingSince) {}
 
     public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
         return element;
@@ -47,30 +47,20 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     }
 
     public async getChildren(): Promise<vscode.TreeItem[]> {
-        if (this.since === undefined) {
+        if (this.cache) {
             this.setMessage(undefined);
-            return [];
+            return this.cache;
         }
 
-        const cachedNodes = this.cache.get(this.since);
-        if (cachedNodes) {
-            this.setMessage(undefined);
-            return cachedNodes;
-        }
-
-        if (this.activeRequest?.since === this.since) {
+        if (this.activeRequest) {
             this.setLoadingMessage(this.since);
             return this.activeRequest.promise;
         }
 
-        this.activeRequest?.controller.abort();
-
-        const since = this.since;
         const controller = new AbortController();
-        const promise = this.loadTrending(since, controller);
-        this.setLoadingMessage(since);
+        const promise = this.loadTrending(controller);
+        this.setLoadingMessage(this.since);
         this.activeRequest = {
-            since,
             controller,
             promise,
         };
@@ -78,40 +68,17 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
         return promise;
     }
 
-    public getTrending(since: MTrendingSince): void {
-        this.since = since;
-        if (this.activeRequest?.since !== since) {
-            this.activeRequest?.controller.abort();
-            this.activeRequest = undefined;
-        }
-        if (this.cache.has(since)) {
-            this.setMessage(undefined);
-        } else {
-            this.setLoadingMessage(since);
-        }
-        this.onDidChangeTreeDataEvent.fire(undefined);
-    }
-
     public refresh(): void {
-        if (this.since === undefined) {
-            this.setMessage(undefined);
-            this.onDidChangeTreeDataEvent.fire(undefined);
-            return;
-        }
-
-        this.cache.delete(this.since);
+        this.cache = undefined;
         this.activeRequest?.controller.abort();
         this.activeRequest = undefined;
         this.setLoadingMessage(this.since);
         this.onDidChangeTreeDataEvent.fire(undefined);
     }
 
-    private async loadTrending(
-        since: MTrendingSince,
-        controller: AbortController,
-    ): Promise<vscode.TreeItem[]> {
+    private async loadTrending(controller: AbortController): Promise<vscode.TreeItem[]> {
         try {
-            const response = await RGetTrending(since, controller.signal);
+            const response = await RGetTrending(this.since, controller.signal);
             const $ = cheerio.load(response.data);
             const items = $('.Box-row');
             const nodes: vscode.TreeItem[] = [];
@@ -138,20 +105,14 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
                 nodes.push(node);
             });
 
-            this.cache.set(since, nodes);
-            if (this.since !== since) {
-                return this.getCurrentNodes();
-            }
-
+            this.cache = nodes;
             this.setMessage(undefined);
             return nodes;
         } catch (error) {
             if (isAbortError(error)) {
                 return this.getCurrentNodes();
             }
-            if (this.since === since) {
-                this.setMessage(`${getErrorDetail(error)}. Run Refresh to try again.`);
-            }
+            this.setMessage(`${getErrorDetail(error)}. Run Refresh to try again.`);
             return [];
         } finally {
             if (this.activeRequest?.controller === controller) {
@@ -171,6 +132,6 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     }
 
     private getCurrentNodes(): vscode.TreeItem[] {
-        return this.since === undefined ? [] : (this.cache.get(this.since) ?? []);
+        return this.cache ?? [];
     }
 }

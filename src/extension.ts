@@ -9,11 +9,28 @@ const getErrorDetail = (error: unknown): string => {
 };
 
 export const activate = (context: vscode.ExtensionContext): void => {
-    const explorerTree: ExplorerTree = new ExplorerTree();
-    const treeView = vscode.window.createTreeView('trending', {
-        treeDataProvider: explorerTree,
-    });
-    explorerTree.setTreeView(treeView);
+    const createTrendingView = (
+        viewId: string,
+        since: MTrendingSince,
+    ): {
+        provider: ExplorerTree;
+        treeView: vscode.TreeView<vscode.TreeItem>;
+    } => {
+        const provider = new ExplorerTree(since);
+        const treeView = vscode.window.createTreeView(viewId, {
+            treeDataProvider: provider,
+        });
+        provider.setTreeView(treeView);
+
+        return {
+            provider,
+            treeView,
+        };
+    };
+
+    const dailyView = createTrendingView('trendingDaily', MTrendingSince.Daily);
+    const weeklyView = createTrendingView('trendingWeekly', MTrendingSince.Weekly);
+    const monthlyView = createTrendingView('trendingMonthly', MTrendingSince.Monthly);
 
     let webviewPanel: vscode.WebviewPanel | undefined;
     const getWebviewPanel = (): vscode.WebviewPanel => {
@@ -79,18 +96,17 @@ export const activate = (context: vscode.ExtensionContext): void => {
     };
 
     context.subscriptions.push(
-        treeView,
-        vscode.commands.registerCommand('github-trending.daily', () => {
-            explorerTree.getTrending(MTrendingSince.Daily);
+        dailyView.treeView,
+        weeklyView.treeView,
+        monthlyView.treeView,
+        vscode.commands.registerCommand('github-trending.dailyRefresh', () => {
+            dailyView.provider.refresh();
         }),
-        vscode.commands.registerCommand('github-trending.weekly', () => {
-            explorerTree.getTrending(MTrendingSince.Weekly);
+        vscode.commands.registerCommand('github-trending.weeklyRefresh', () => {
+            weeklyView.provider.refresh();
         }),
-        vscode.commands.registerCommand('github-trending.monthly', () => {
-            explorerTree.getTrending(MTrendingSince.Monthly);
-        }),
-        vscode.commands.registerCommand('github-trending.refresh', () => {
-            explorerTree.refresh();
+        vscode.commands.registerCommand('github-trending.monthlyRefresh', () => {
+            monthlyView.provider.refresh();
         }),
         vscode.commands.registerCommand(
             'github-trending.select',

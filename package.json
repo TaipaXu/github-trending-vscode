@@ -48,28 +48,20 @@
         "vite-plus": "^0.2.1"
     },
     "contributes": {
-        "viewsWelcome": [
-            {
-                "view": "trending",
-                "contents": "[Daily](command:github-trending.daily)\n[Weekly](command:github-trending.weekly)\n[Monthly](command:github-trending.monthly)\n Visit [this project](https://github.com/TaipaXu/github-trending-vscode)\n"
-            }
-        ],
         "commands": [
             {
-                "command": "github-trending.daily",
-                "title": "D"
+                "command": "github-trending.dailyRefresh",
+                "title": "Refresh Daily",
+                "icon": "$(refresh)"
             },
             {
-                "command": "github-trending.weekly",
-                "title": "W"
+                "command": "github-trending.weeklyRefresh",
+                "title": "Refresh Weekly",
+                "icon": "$(refresh)"
             },
             {
-                "command": "github-trending.monthly",
-                "title": "M"
-            },
-            {
-                "command": "github-trending.refresh",
-                "title": "Refresh",
+                "command": "github-trending.monthlyRefresh",
+                "title": "Refresh Monthly",
                 "icon": "$(refresh)"
             },
             {
@@ -90,39 +82,41 @@
         "views": {
             "githubTrending": [
                 {
-                    "id": "trending",
-                    "name": "Github Trending"
+                    "id": "trendingDaily",
+                    "name": "Daily"
+                },
+                {
+                    "id": "trendingWeekly",
+                    "name": "Weekly"
+                },
+                {
+                    "id": "trendingMonthly",
+                    "name": "Monthly"
                 }
             ]
         },
         "menus": {
             "view/title": [
                 {
-                    "command": "github-trending.daily",
-                    "when": "view == trending",
-                    "title": "daily",
+                    "command": "github-trending.dailyRefresh",
+                    "when": "view == trendingDaily",
                     "group": "navigation@0"
                 },
                 {
-                    "command": "github-trending.weekly",
-                    "when": "view == trending",
-                    "group": "navigation@1"
+                    "command": "github-trending.weeklyRefresh",
+                    "when": "view == trendingWeekly",
+                    "group": "navigation@0"
                 },
                 {
-                    "command": "github-trending.monthly",
-                    "when": "view == trending",
-                    "group": "navigation@2"
-                },
-                {
-                    "command": "github-trending.refresh",
-                    "when": "view == trending",
-                    "group": "navigation@3"
+                    "command": "github-trending.monthlyRefresh",
+                    "when": "view == trendingMonthly",
+                    "group": "navigation@0"
                 }
             ],
             "view/item/context": [
                 {
                     "command": "github-trending.openInBrowser",
-                    "when": "view == trending",
+                    "when": "view == trendingDaily || view == trendingWeekly || view == trendingMonthly",
                     "title": "openInBrowser",
                     "group": "inline"
                 }
