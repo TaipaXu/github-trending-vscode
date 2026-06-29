@@ -201,6 +201,14 @@ const getReadmeStyles = (): string => {
             box-sizing: border-box;
         }
 
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            overflow-anchor: none;
+            scroll-behavior: auto;
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -209,6 +217,18 @@ const getReadmeStyles = (): string => {
             font-family: var(--vscode-font-family);
             font-size: var(--vscode-font-size);
             line-height: 1.6;
+        }
+
+        .readme-scroll-root {
+            height: 100vh;
+            height: 100dvh;
+            overflow: auto;
+            overscroll-behavior: contain;
+            scroll-behavior: auto;
+        }
+
+        .readme-scroll-root:focus {
+            outline: none;
         }
 
         .readme-page {
@@ -442,29 +462,114 @@ const getReadmeStyles = (): string => {
     `;
 };
 
-export const createReadmeWebviewHtml = (
-    webview: vscode.Webview,
-    userName: string,
-    repoName: string,
-    readmeInfo: GitHubReadmeResponse,
-    markdownHtml: string,
-): string => {
-    const nonce = createNonce();
-    const repositoryUrl = getGitHubRepoUrl(userName, repoName);
-    const readmeHtmlUrl = readmeInfo.html_url || repositoryUrl;
-    const readmeDownloadBaseUrl = getReadmeDownloadBaseUrl(userName, repoName, readmeInfo);
-    const renderedReadme = sanitizeReadmeHtml(markdownHtml, readmeHtmlUrl, readmeDownloadBaseUrl);
-    const contentSecurityPolicy = [
+const getContentSecurityPolicy = (webview: vscode.Webview, nonce: string): string => {
+    return [
         `default-src 'none'`,
         `img-src ${webview.cspSource} https: data:`,
         `style-src ${webview.cspSource} 'nonce-${nonce}'`,
-        `script-src 'none'`,
+        `script-src 'nonce-${nonce}'`,
         `connect-src 'none'`,
         `object-src 'none'`,
         `frame-src 'none'`,
         `form-action 'none'`,
         `base-uri 'none'`,
     ].join('; ');
+};
+
+const getScrollResetScript = (): string => {
+    return `
+        (() => {
+            const scrollRoot = document.querySelector('[data-scroll-root]');
+            const navigationKeys = new Set([
+                'ArrowDown',
+                'ArrowLeft',
+                'ArrowRight',
+                'ArrowUp',
+                'End',
+                'Home',
+                'PageDown',
+                'PageUp',
+            ]);
+            let hasUserScrolled = false;
+
+            const markUserScrolled = () => {
+                hasUserScrolled = true;
+            };
+
+            const resetScroll = () => {
+                if (hasUserScrolled) {
+                    return;
+                }
+
+                try {
+                    if ('scrollRestoration' in history) {
+                        history.scrollRestoration = 'manual';
+                    }
+                } catch {
+                    // Some webview hosts do not allow changing history state.
+                }
+
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.documentElement.scrollLeft = 0;
+                document.body.scrollTop = 0;
+                document.body.scrollLeft = 0;
+
+                if (scrollRoot) {
+                    scrollRoot.scrollTop = 0;
+                    scrollRoot.scrollLeft = 0;
+                }
+            };
+
+            const resetUntilSettled = () => {
+                const startedAt = performance.now();
+                const tick = () => {
+                    resetScroll();
+
+                    if (!hasUserScrolled && performance.now() - startedAt < 1200) {
+                        requestAnimationFrame(tick);
+                    }
+                };
+
+                tick();
+            };
+
+            if (scrollRoot) {
+                scrollRoot.focus({ preventScroll: true });
+                scrollRoot.addEventListener('wheel', markUserScrolled, { once: true, passive: true });
+                scrollRoot.addEventListener('touchstart', markUserScrolled, { once: true, passive: true });
+                scrollRoot.addEventListener('pointerdown', markUserScrolled, { once: true, passive: true });
+            } else {
+                window.addEventListener('wheel', markUserScrolled, { once: true, passive: true });
+                window.addEventListener('touchstart', markUserScrolled, { once: true, passive: true });
+                window.addEventListener('pointerdown', markUserScrolled, { once: true, passive: true });
+            }
+
+            window.addEventListener(
+                'keydown',
+                (event) => {
+                    if (navigationKeys.has(event.key) || event.code === 'Space') {
+                        markUserScrolled();
+                    }
+                },
+                { passive: true },
+            );
+
+            resetUntilSettled();
+            window.addEventListener('load', resetUntilSettled, { once: true });
+            window.setTimeout(resetScroll, 1600);
+        })();
+    `;
+};
+
+export const createReadmeStatusWebviewHtml = (
+    webview: vscode.Webview,
+    userName: string,
+    repoName: string,
+    message: string,
+): string => {
+    const nonce = createNonce();
+    const contentSecurityPolicy = getContentSecurityPolicy(webview, nonce);
 
     return `<!DOCTYPE html>
         <html lang="en">
@@ -479,19 +584,66 @@ export const createReadmeWebviewHtml = (
                 <style nonce="${escapeHtml(nonce)}">${getReadmeStyles()}</style>
             </head>
             <body>
-                <div class="readme-page">
-                    <header class="readme-toolbar">
-                        <div class="repo-path">
-                            <span>${escapeHtml(userName)} /</span> ${escapeHtml(repoName)}
-                        </div>
-                        <a class="readme-link" href="${escapeHtml(readmeHtmlUrl)}" target="_blank" rel="noopener noreferrer">
-                            Open README
-                        </a>
-                    </header>
-                    <main class="markdown-body">
-                        ${renderedReadme || '<p class="readme-empty">README is empty.</p>'}
-                    </main>
+                <div class="readme-scroll-root" data-scroll-root tabindex="-1">
+                    <div class="readme-page">
+                        <header class="readme-toolbar">
+                            <div class="repo-path">
+                                <span>${escapeHtml(userName)} /</span> ${escapeHtml(repoName)}
+                            </div>
+                        </header>
+                        <main class="markdown-body">
+                            <p class="readme-empty">${escapeHtml(message)}</p>
+                        </main>
+                    </div>
                 </div>
+                <script nonce="${escapeHtml(nonce)}">${getScrollResetScript()}</script>
+            </body>
+        </html>`;
+};
+
+export const createReadmeWebviewHtml = (
+    webview: vscode.Webview,
+    userName: string,
+    repoName: string,
+    readmeInfo: GitHubReadmeResponse,
+    markdownHtml: string,
+): string => {
+    const nonce = createNonce();
+    const repositoryUrl = getGitHubRepoUrl(userName, repoName);
+    const readmeHtmlUrl = readmeInfo.html_url || repositoryUrl;
+    const readmeDownloadBaseUrl = getReadmeDownloadBaseUrl(userName, repoName, readmeInfo);
+    const renderedReadme = sanitizeReadmeHtml(markdownHtml, readmeHtmlUrl, readmeDownloadBaseUrl);
+    const contentSecurityPolicy = getContentSecurityPolicy(webview, nonce);
+
+    return `<!DOCTYPE html>
+        <html lang="en">
+            <head>
+                <meta charset="utf-8">
+                <meta
+                    http-equiv="Content-Security-Policy"
+                    content="${escapeHtml(contentSecurityPolicy)}"
+                >
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${escapeHtml(repoName)}</title>
+                <style nonce="${escapeHtml(nonce)}">${getReadmeStyles()}</style>
+            </head>
+            <body>
+                <div class="readme-scroll-root" data-scroll-root tabindex="-1">
+                    <div class="readme-page">
+                        <header class="readme-toolbar">
+                            <div class="repo-path">
+                                <span>${escapeHtml(userName)} /</span> ${escapeHtml(repoName)}
+                            </div>
+                            <a class="readme-link" href="${escapeHtml(readmeHtmlUrl)}" target="_blank" rel="noopener noreferrer">
+                                Open README
+                            </a>
+                        </header>
+                        <main class="markdown-body">
+                            ${renderedReadme || '<p class="readme-empty">README is empty.</p>'}
+                        </main>
+                    </div>
+                </div>
+                <script nonce="${escapeHtml(nonce)}">${getScrollResetScript()}</script>
             </body>
         </html>`;
 };

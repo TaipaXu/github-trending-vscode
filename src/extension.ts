@@ -3,7 +3,11 @@ import { marked } from 'marked';
 import { ExplorerTree } from './explorerTree';
 import { getRepoReadmeInfo as RGetRepoReadmeInfo } from './apis/trending';
 import { TrendingSince as MTrendingSince } from './models/trendingSince';
-import { createReadmeWebviewHtml, decodeReadme } from './readmeWebview';
+import {
+    createReadmeStatusWebviewHtml,
+    createReadmeWebviewHtml,
+    decodeReadme,
+} from './readmeWebview';
 
 const getErrorDetail = (error: unknown): string => {
     return error instanceof Error ? error.message : 'Failed to load README';
@@ -34,6 +38,7 @@ export const activate = (context: vscode.ExtensionContext): void => {
     const monthlyView = createTrendingView('trendingMonthly', MTrendingSince.Monthly);
 
     let webviewPanel: vscode.WebviewPanel | undefined;
+    let readmeLoadVersion = 0;
     const getWebviewPanel = (): vscode.WebviewPanel => {
         if (!webviewPanel) {
             const panel = vscode.window.createWebviewPanel(
@@ -41,7 +46,7 @@ export const activate = (context: vscode.ExtensionContext): void => {
                 'Github Trending',
                 vscode.ViewColumn.One,
                 {
-                    enableScripts: false,
+                    enableScripts: true,
                     enableForms: false,
                     enableCommandUris: false,
                 },
@@ -59,8 +64,15 @@ export const activate = (context: vscode.ExtensionContext): void => {
 
     const showReadme = async (userName: string, repoName: string): Promise<void> => {
         const panel = getWebviewPanel();
+        const loadVersion = ++readmeLoadVersion;
         panel.title = repoName;
         panel.reveal(panel.viewColumn ?? vscode.ViewColumn.One);
+        panel.webview.html = createReadmeStatusWebviewHtml(
+            panel.webview,
+            userName,
+            repoName,
+            'Loading README...',
+        );
 
         try {
             const response = await RGetRepoReadmeInfo({
@@ -77,9 +89,24 @@ export const activate = (context: vscode.ExtensionContext): void => {
                 markdown,
             );
 
+            if (loadVersion !== readmeLoadVersion || panel !== webviewPanel) {
+                return;
+            }
+
             panel.webview.html = html;
         } catch (error) {
-            vscode.window.showWarningMessage(getErrorDetail(error));
+            if (loadVersion !== readmeLoadVersion || panel !== webviewPanel) {
+                return;
+            }
+
+            const errorDetail = getErrorDetail(error);
+            panel.webview.html = createReadmeStatusWebviewHtml(
+                panel.webview,
+                userName,
+                repoName,
+                errorDetail,
+            );
+            vscode.window.showWarningMessage(errorDetail);
         }
     };
 
