@@ -1,7 +1,7 @@
 {
     "name": "github-trending",
     "displayName": "Github Trending",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "See what the GitHub community is most excited about in Visual Studio Code.",
     "categories": [
         "Other"
