@@ -96,6 +96,12 @@
             ]
         },
         "menus": {
+            "commandPalette": [
+                {
+                    "command": "github-trending.openInBrowser",
+                    "when": "false"
+                }
+            ],
             "view/title": [
                 {
                     "command": "github-trending.dailyRefresh",

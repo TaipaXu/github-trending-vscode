@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite-plus';
 
 export default defineConfig(({ mode }) => ({
+    // The VSIX is intentionally packaged without node_modules. Keep the extension
+    // entry self-contained so it can load outside the development workspace.
+    ssr: {
+        noExternal: true,
+    },
     staged: {
         '*': 'vp check --fix',
     },

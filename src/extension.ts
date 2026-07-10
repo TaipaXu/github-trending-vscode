@@ -131,14 +131,15 @@ export const activate = (context: vscode.ExtensionContext): void => {
         ),
         vscode.commands.registerCommand(
             'github-trending.openInBrowser',
-            (item: vscode.TreeItem) => {
-                const eventArguments: readonly unknown[] = item.command?.arguments ?? [];
+            async (item?: vscode.TreeItem) => {
+                const eventArguments: readonly unknown[] = item?.command?.arguments ?? [];
                 const userName = eventArguments[0];
                 const repoName = eventArguments[1];
                 if (typeof userName !== 'string' || typeof repoName !== 'string') {
                     return;
                 }
-                vscode.env.openExternal(
+
+                await vscode.env.openExternal(
                     vscode.Uri.parse(`https://github.com/${userName}/${repoName}`),
                 );
             },
