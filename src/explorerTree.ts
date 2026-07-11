@@ -2,10 +2,30 @@ import * as vscode from 'vscode';
 import * as cheerio from 'cheerio';
 import { getTrending as RGetTrending } from './apis/trending';
 import { TrendingSince as MTrendingSince } from './models/trendingSince';
+import { RequestError, RequestTimeoutError } from './request';
 import getTreeIcon from './utils/icon';
 
 const getErrorDetail = (error: unknown): string => {
-    return error instanceof Error ? error.message : 'Failed to load trending repositories';
+    if (error instanceof RequestTimeoutError) {
+        return vscode.l10n.t('GitHub took too long to respond. Try again.');
+    }
+
+    if (error instanceof RequestError) {
+        return vscode.l10n.t(
+            'GitHub Trending request failed (HTTP {0}). Try again.',
+            error.response.status,
+        );
+    }
+
+    if (error instanceof TypeError && error.message.toLowerCase().includes('fetch')) {
+        return vscode.l10n.t(
+            'Unable to connect to GitHub. Check your internet connection and try again.',
+        );
+    }
+
+    return error instanceof Error
+        ? vscode.l10n.t('Failed to load trending repositories: {0}', error.message)
+        : vscode.l10n.t('Failed to load trending repositories');
 };
 
 const isAbortError = (error: unknown): boolean => {
@@ -44,16 +64,16 @@ interface CacheEntry {
 
 const createTooltip = (details: TooltipDetails): vscode.MarkdownString => {
     const tooltip = new vscode.MarkdownString(undefined, true);
-    tooltip.appendText(details.description || 'No description');
-    tooltip.appendMarkdown('\n\n**Author:** ');
+    tooltip.appendText(details.description || vscode.l10n.t('No description'));
+    tooltip.appendMarkdown(`\n\n**${vscode.l10n.t('Author')}:** `);
     tooltip.appendText(details.userName);
-    tooltip.appendMarkdown('\n\n**Language:** ');
-    tooltip.appendText(details.language || 'Unknown');
-    tooltip.appendMarkdown('\n\n**Stars:** ');
-    tooltip.appendText(details.starCount || 'Unknown');
-    tooltip.appendMarkdown('\n\n**Forks:** ');
-    tooltip.appendText(details.forkCount || 'Unknown');
-    tooltip.appendMarkdown('\n\n**Link:** ');
+    tooltip.appendMarkdown(`\n\n**${vscode.l10n.t('Language')}:** `);
+    tooltip.appendText(details.language || vscode.l10n.t('Unknown'));
+    tooltip.appendMarkdown(`\n\n**${vscode.l10n.t('Stars')}:** `);
+    tooltip.appendText(details.starCount || vscode.l10n.t('Unknown'));
+    tooltip.appendMarkdown(`\n\n**${vscode.l10n.t('Forks')}:** `);
+    tooltip.appendText(details.forkCount || vscode.l10n.t('Unknown'));
+    tooltip.appendMarkdown(`\n\n**${vscode.l10n.t('Link')}:** `);
     tooltip.appendMarkdown(`[${details.repositoryUrl}](${details.repositoryUrl})`);
 
     return tooltip;
@@ -151,7 +171,9 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
             const items = $('.Box-row');
             if (items.length === 0) {
                 throw new Error(
-                    'GitHub Trending returned no repository rows; the page structure may have changed',
+                    vscode.l10n.t(
+                        'GitHub Trending returned no repository rows; the page structure may have changed',
+                    ),
                 );
             }
 
@@ -202,7 +224,9 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
 
             if (nodes.length === 0) {
                 throw new Error(
-                    'GitHub Trending repository rows could not be parsed; the page structure may have changed',
+                    vscode.l10n.t(
+                        'GitHub Trending repository rows could not be parsed; the page structure may have changed',
+                    ),
                 );
             }
 
@@ -234,16 +258,26 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
             this.retryRefreshAfter = Date.now() + refreshRetryDelay;
             const errorDetail = getErrorDetail(error);
             if (this.cache) {
-                const updatedAt = new Date(this.cache.updatedAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                });
-                this.lastRefreshErrorMessage = `${errorDetail}. Showing cached results from ${updatedAt}. Run Refresh to try again.`;
+                const updatedAt = new Date(this.cache.updatedAt).toLocaleTimeString(
+                    vscode.env.language,
+                    {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    },
+                );
+                this.lastRefreshErrorMessage = vscode.l10n.t(
+                    '{0}. Showing cached results from {1}. Run Refresh to try again.',
+                    errorDetail,
+                    updatedAt,
+                );
                 this.setMessage(this.lastRefreshErrorMessage);
                 return this.cache.nodes;
             }
 
-            this.lastRefreshErrorMessage = `${errorDetail}. Run Refresh to try again.`;
+            this.lastRefreshErrorMessage = vscode.l10n.t(
+                '{0}. Run Refresh to try again.',
+                errorDetail,
+            );
             this.setMessage(this.lastRefreshErrorMessage);
             return [];
         } finally {
@@ -254,8 +288,12 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
     }
 
     private setRefreshMessage(): void {
-        const action = this.cache ? 'Refreshing' : 'Loading';
-        this.setMessage(`${action} ${this.since} trending repositories...`);
+        const since = vscode.l10n.t(this.since);
+        this.setMessage(
+            this.cache
+                ? vscode.l10n.t('Refreshing {0} trending repositories...', since)
+                : vscode.l10n.t('Loading {0} trending repositories...', since),
+        );
     }
 
     private setMessage(message: string | undefined): void {

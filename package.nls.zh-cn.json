@@ -1,0 +1,11 @@
+{
+    "extension.displayName": "GitHub Trending",
+    "extension.description": "在 Visual Studio Code 中查看 GitHub 社区当前最关注的 Trending 项目。",
+    "command.dailyRefresh.title": "刷新每日趋势",
+    "command.weeklyRefresh.title": "刷新每周趋势",
+    "command.monthlyRefresh.title": "刷新每月趋势",
+    "command.openInBrowser.title": "在浏览器中打开",
+    "view.daily.name": "每日",
+    "view.weekly.name": "每周",
+    "view.monthly.name": "每月"
+}

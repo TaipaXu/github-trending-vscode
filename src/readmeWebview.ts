@@ -98,7 +98,7 @@ const resolveReadmeLinkUrl = (
 
 export const decodeReadme = (readmeInfo: GitHubReadmeResponse): string => {
     if (readmeInfo.encoding !== 'base64') {
-        throw new Error(`Unsupported README encoding: ${readmeInfo.encoding}`);
+        throw new Error(vscode.l10n.t('Unsupported README encoding: {0}', readmeInfo.encoding));
     }
 
     return Buffer.from(readmeInfo.content, 'base64').toString('utf8');
@@ -227,8 +227,13 @@ const getReadmeStyles = (): string => {
             scroll-behavior: auto;
         }
 
-        .readme-scroll-root:focus {
-            outline: none;
+        :where(a, summary, [tabindex]):focus-visible {
+            outline: 2px solid var(--vscode-focusBorder);
+            outline-offset: 2px;
+        }
+
+        .readme-scroll-root:focus-visible {
+            outline-offset: -2px;
         }
 
         .readme-page {
@@ -567,12 +572,15 @@ export const createReadmeStatusWebviewHtml = (
     userName: string,
     repoName: string,
     message: string,
+    role: 'status' | 'alert' = 'status',
 ): string => {
     const nonce = createNonce();
     const contentSecurityPolicy = getContentSecurityPolicy(webview, nonce);
+    const locale = vscode.env.language;
+    const regionLabel = vscode.l10n.t('README for {0}/{1}', userName, repoName);
 
     return `<!DOCTYPE html>
-        <html lang="en">
+        <html lang="${escapeHtml(locale)}">
             <head>
                 <meta charset="utf-8">
                 <meta
@@ -584,7 +592,13 @@ export const createReadmeStatusWebviewHtml = (
                 <style nonce="${escapeHtml(nonce)}">${getReadmeStyles()}</style>
             </head>
             <body>
-                <div class="readme-scroll-root" data-scroll-root tabindex="-1">
+                <div
+                    class="readme-scroll-root"
+                    data-scroll-root
+                    role="region"
+                    aria-label="${escapeHtml(regionLabel)}"
+                    tabindex="0"
+                >
                     <div class="readme-page">
                         <header class="readme-toolbar">
                             <div class="repo-path">
@@ -592,7 +606,9 @@ export const createReadmeStatusWebviewHtml = (
                             </div>
                         </header>
                         <main class="markdown-body">
-                            <p class="readme-empty">${escapeHtml(message)}</p>
+                            <p class="readme-empty" role="${role}" aria-atomic="true">
+                                ${escapeHtml(message)}
+                            </p>
                         </main>
                     </div>
                 </div>
@@ -614,9 +630,11 @@ export const createReadmeWebviewHtml = (
     const readmeDownloadBaseUrl = getReadmeDownloadBaseUrl(userName, repoName, readmeInfo);
     const renderedReadme = sanitizeReadmeHtml(markdownHtml, readmeHtmlUrl, readmeDownloadBaseUrl);
     const contentSecurityPolicy = getContentSecurityPolicy(webview, nonce);
+    const locale = vscode.env.language;
+    const regionLabel = vscode.l10n.t('README for {0}/{1}', userName, repoName);
 
     return `<!DOCTYPE html>
-        <html lang="en">
+        <html lang="${escapeHtml(locale)}">
             <head>
                 <meta charset="utf-8">
                 <meta
@@ -628,18 +646,27 @@ export const createReadmeWebviewHtml = (
                 <style nonce="${escapeHtml(nonce)}">${getReadmeStyles()}</style>
             </head>
             <body>
-                <div class="readme-scroll-root" data-scroll-root tabindex="-1">
+                <div
+                    class="readme-scroll-root"
+                    data-scroll-root
+                    role="region"
+                    aria-label="${escapeHtml(regionLabel)}"
+                    tabindex="0"
+                >
                     <div class="readme-page">
                         <header class="readme-toolbar">
                             <div class="repo-path">
                                 <span>${escapeHtml(userName)} /</span> ${escapeHtml(repoName)}
                             </div>
                             <a class="readme-link" href="${escapeHtml(readmeHtmlUrl)}" target="_blank" rel="noopener noreferrer">
-                                Open README
+                                ${escapeHtml(vscode.l10n.t('Open README'))}
                             </a>
                         </header>
                         <main class="markdown-body">
-                            ${renderedReadme || '<p class="readme-empty">README is empty.</p>'}
+                            ${
+                                renderedReadme ||
+                                `<p class="readme-empty">${escapeHtml(vscode.l10n.t('README is empty.'))}</p>`
+                            }
                         </main>
                     </div>
                 </div>

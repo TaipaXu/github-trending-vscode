@@ -1,0 +1,11 @@
+{
+    "extension.displayName": "GitHub Trending",
+    "extension.description": "See what the GitHub community is most excited about in Visual Studio Code.",
+    "command.dailyRefresh.title": "Refresh Daily",
+    "command.weeklyRefresh.title": "Refresh Weekly",
+    "command.monthlyRefresh.title": "Refresh Monthly",
+    "command.openInBrowser.title": "Open in browser",
+    "view.daily.name": "Daily",
+    "view.weekly.name": "Weekly",
+    "view.monthly.name": "Monthly"
+}

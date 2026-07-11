@@ -58,7 +58,7 @@ const getRateLimitResetTime = (headers: Record<string, string>): string | undefi
         return undefined;
     }
 
-    return new Date(resetAt * 1000).toLocaleTimeString([], {
+    return new Date(resetAt * 1000).toLocaleTimeString(vscode.env.language, {
         hour: '2-digit',
         minute: '2-digit',
     });
@@ -78,46 +78,52 @@ const isRateLimitError = (error: RequestError): boolean => {
 
 const getReadmeErrorDetail = (error: unknown): string => {
     if (error instanceof RequestTimeoutError) {
-        return 'GitHub took too long to respond. Try again.';
+        return vscode.l10n.t('GitHub took too long to respond. Try again.');
     }
 
     if (error instanceof RequestError) {
         const { headers, status } = error.response;
         if (status === 404) {
-            return 'This repository does not have an accessible README.';
+            return vscode.l10n.t('This repository does not have an accessible README.');
         }
 
         if (isRateLimitError(error)) {
             const resetTime = getRateLimitResetTime(headers);
             return resetTime
-                ? `GitHub API rate limit reached. Try again after ${resetTime}.`
-                : 'GitHub API rate limit reached. Try again later.';
+                ? vscode.l10n.t('GitHub API rate limit reached. Try again after {0}.', resetTime)
+                : vscode.l10n.t('GitHub API rate limit reached. Try again later.');
         }
 
         if (status === 401 || status === 403) {
-            return `GitHub denied access to this README (HTTP ${status}).`;
+            return vscode.l10n.t('GitHub denied access to this README (HTTP {0}).', status);
         }
 
         if (status >= 500) {
-            return `GitHub is temporarily unavailable (HTTP ${status}). Try again later.`;
+            return vscode.l10n.t(
+                'GitHub is temporarily unavailable (HTTP {0}). Try again later.',
+                status,
+            );
         }
 
-        return `GitHub README request failed (HTTP ${status}). Try again.`;
+        return vscode.l10n.t('GitHub README request failed (HTTP {0}). Try again.', status);
     }
 
     if (error instanceof TypeError && error.message.toLowerCase().includes('fetch')) {
-        return 'Unable to connect to GitHub. Check your internet connection and try again.';
+        return vscode.l10n.t(
+            'Unable to connect to GitHub. Check your internet connection and try again.',
+        );
     }
 
     return error instanceof Error
-        ? `Failed to display README: ${error.message}`
-        : 'Failed to load README.';
+        ? vscode.l10n.t('Failed to display README: {0}', error.message)
+        : vscode.l10n.t('Failed to load README.');
 };
 
 export const activate = (context: vscode.ExtensionContext): void => {
     const createTrendingView = (
         viewId: string,
         since: MTrendingSince,
+        title: string,
     ): {
         provider: ExplorerTree;
         treeView: vscode.TreeView<vscode.TreeItem>;
@@ -126,6 +132,7 @@ export const activate = (context: vscode.ExtensionContext): void => {
         const treeView = vscode.window.createTreeView(viewId, {
             treeDataProvider: provider,
         });
+        treeView.title = title;
         provider.setTreeView(treeView);
 
         return {
@@ -134,9 +141,21 @@ export const activate = (context: vscode.ExtensionContext): void => {
         };
     };
 
-    const dailyView = createTrendingView('trendingDaily', MTrendingSince.Daily);
-    const weeklyView = createTrendingView('trendingWeekly', MTrendingSince.Weekly);
-    const monthlyView = createTrendingView('trendingMonthly', MTrendingSince.Monthly);
+    const dailyView = createTrendingView(
+        'trendingDaily',
+        MTrendingSince.Daily,
+        vscode.l10n.t('Daily'),
+    );
+    const weeklyView = createTrendingView(
+        'trendingWeekly',
+        MTrendingSince.Weekly,
+        vscode.l10n.t('Weekly'),
+    );
+    const monthlyView = createTrendingView(
+        'trendingMonthly',
+        MTrendingSince.Monthly,
+        vscode.l10n.t('Monthly'),
+    );
 
     const readmeCache = new Map<string, ReadmeCacheEntry>();
     const inFlightReadmeRequests = new Map<string, InFlightReadmeRequest>();
@@ -195,7 +214,9 @@ export const activate = (context: vscode.ExtensionContext): void => {
 
         if (response.status === 304) {
             if (!cachedEntry) {
-                throw new Error('GitHub returned Not Modified without a cached README');
+                throw new Error(
+                    vscode.l10n.t('GitHub returned Not Modified without a cached README'),
+                );
             }
 
             const validatedEntry = {
@@ -210,7 +231,7 @@ export const activate = (context: vscode.ExtensionContext): void => {
         }
 
         if (!response.data) {
-            throw new Error('GitHub returned an empty README response');
+            throw new Error(vscode.l10n.t('GitHub returned an empty README response'));
         }
 
         const readme = decodeReadme(response.data);
@@ -285,7 +306,7 @@ export const activate = (context: vscode.ExtensionContext): void => {
         if (!webviewPanel) {
             const panel = vscode.window.createWebviewPanel(
                 'github-trending',
-                'Github Trending',
+                vscode.l10n.t('GitHub Trending'),
                 vscode.ViewColumn.One,
                 {
                     enableScripts: true,
@@ -338,7 +359,8 @@ export const activate = (context: vscode.ExtensionContext): void => {
                 panel.webview,
                 userName,
                 repoName,
-                'Loading README...',
+                vscode.l10n.t('Loading README...'),
+                'status',
             );
         }
 
@@ -375,10 +397,11 @@ export const activate = (context: vscode.ExtensionContext): void => {
                     userName,
                     repoName,
                     errorDetail,
+                    'alert',
                 );
             }
             const warningMessage = cachedEntry
-                ? `${errorDetail} Showing cached README.`
+                ? vscode.l10n.t('{0} Showing cached README.', errorDetail)
                 : errorDetail;
             vscode.window.showWarningMessage(warningMessage);
         } finally {

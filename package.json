@@ -1,8 +1,8 @@
 {
     "name": "github-trending",
-    "displayName": "Github Trending",
+    "displayName": "%extension.displayName%",
     "version": "0.3.1",
-    "description": "See what the GitHub community is most excited about in Visual Studio Code.",
+    "description": "%extension.description%",
     "categories": [
         "Other"
     ],
@@ -46,26 +46,27 @@
         "typescript": "^6.0.3",
         "vite-plus": "^0.2.1"
     },
+    "l10n": "./l10n",
     "contributes": {
         "commands": [
             {
                 "command": "github-trending.dailyRefresh",
-                "title": "Refresh Daily",
+                "title": "%command.dailyRefresh.title%",
                 "icon": "$(refresh)"
             },
             {
                 "command": "github-trending.weeklyRefresh",
-                "title": "Refresh Weekly",
+                "title": "%command.weeklyRefresh.title%",
                 "icon": "$(refresh)"
             },
             {
                 "command": "github-trending.monthlyRefresh",
-                "title": "Refresh Monthly",
+                "title": "%command.monthlyRefresh.title%",
                 "icon": "$(refresh)"
             },
             {
                 "command": "github-trending.openInBrowser",
-                "title": "Open in browser",
+                "title": "%command.openInBrowser.title%",
                 "icon": "$(globe)"
             }
         ],
@@ -73,7 +74,7 @@
             "activitybar": [
                 {
                     "id": "githubTrending",
-                    "title": "Github Trending",
+                    "title": "%extension.displayName%",
                     "icon": "static/images/icon.svg"
                 }
             ]
@@ -82,16 +83,16 @@
             "githubTrending": [
                 {
                     "id": "trendingDaily",
-                    "name": "Daily"
+                    "name": "%view.daily.name%"
                 },
                 {
                     "id": "trendingWeekly",
-                    "name": "Weekly",
+                    "name": "%view.weekly.name%",
                     "visibility": "collapsed"
                 },
                 {
                     "id": "trendingMonthly",
-                    "name": "Monthly",
+                    "name": "%view.monthly.name%",
                     "visibility": "collapsed"
                 }
             ]
@@ -124,7 +125,7 @@
                 {
                     "command": "github-trending.openInBrowser",
                     "when": "view == trendingDaily || view == trendingWeekly || view == trendingMonthly",
-                    "title": "openInBrowser",
+                    "title": "%command.openInBrowser.title%",
                     "group": "inline"
                 }
             ]
