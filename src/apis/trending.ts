@@ -26,14 +26,23 @@ interface Params {
     repoName: string;
 }
 
+interface ReadmeRequestOptions {
+    etag?: string;
+    signal?: AbortSignal;
+}
+
 export const getRepoReadmeInfo = async (
     param: Params,
-): Promise<RequestResponse<GitHubReadmeResponse>> => {
-    return request<GitHubReadmeResponse>({
+    options: ReadmeRequestOptions = {},
+): Promise<RequestResponse<GitHubReadmeResponse | null>> => {
+    return request<GitHubReadmeResponse | null>({
         url: `https://api.github.com/repos/${param.userName}/${param.repoName}/readme`,
         method: 'GET',
         headers: {
             Accept: 'application/vnd.github+json',
+            ...(options.etag ? { 'If-None-Match': options.etag } : {}),
         },
+        signal: options.signal,
+        acceptedStatuses: [304],
     });
 };

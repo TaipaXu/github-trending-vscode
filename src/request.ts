@@ -8,6 +8,7 @@ export interface RequestConfig {
     headers?: Record<string, string>;
     responseType?: ResponseType;
     signal?: AbortSignal;
+    acceptedStatuses?: number[];
 }
 
 export interface RequestResponse<T = unknown> {
@@ -25,6 +26,13 @@ export class RequestError<T = unknown> extends Error {
     ) {
         super(message);
         this.name = 'RequestError';
+    }
+}
+
+export class RequestTimeoutError extends Error {
+    public constructor(public readonly timeoutMs: number) {
+        super(`Request timed out after ${timeoutMs}ms`);
+        this.name = 'RequestTimeoutError';
     }
 }
 
@@ -80,10 +88,17 @@ const headersToObject = (headers: Headers): Record<string, string> => {
 const request = async <T = unknown>(config: RequestConfig): Promise<RequestResponse<T>> => {
     const method = config.method ?? 'GET';
     const controller = new AbortController();
+    let abortSource: 'external' | 'timeout' | undefined;
     const abortRequest = (): void => {
+        abortSource ??= 'external';
         controller.abort(config.signal?.reason);
     };
-    const timer = setTimeout(() => controller.abort(new Error('Request timed out')), timeout);
+    const timer = setTimeout(() => {
+        if (!abortSource) {
+            abortSource = 'timeout';
+            controller.abort();
+        }
+    }, timeout);
 
     if (config.signal?.aborted) {
         abortRequest();
@@ -110,7 +125,7 @@ const request = async <T = unknown>(config: RequestConfig): Promise<RequestRespo
             config,
         };
 
-        if (!response.ok) {
+        if (!response.ok && !config.acceptedStatuses?.includes(response.status)) {
             throw new RequestError(
                 `Request failed with status code ${response.status}`,
                 requestResponse,
@@ -118,6 +133,11 @@ const request = async <T = unknown>(config: RequestConfig): Promise<RequestRespo
         }
 
         return requestResponse;
+    } catch (error) {
+        if (abortSource === 'timeout') {
+            throw new RequestTimeoutError(timeout);
+        }
+        throw error;
     } finally {
         clearTimeout(timer);
         config.signal?.removeEventListener('abort', abortRequest);
