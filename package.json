@@ -83,16 +83,19 @@
             "githubTrending": [
                 {
                     "id": "trendingDaily",
-                    "name": "%view.daily.name%"
+                    "name": "%view.daily.name%",
+                    "icon": "static/images/daily.svg"
                 },
                 {
                     "id": "trendingWeekly",
                     "name": "%view.weekly.name%",
+                    "icon": "static/images/weekly.svg",
                     "visibility": "collapsed"
                 },
                 {
                     "id": "trendingMonthly",
                     "name": "%view.monthly.name%",
+                    "icon": "static/images/monthly.svg",
                     "visibility": "collapsed"
                 }
             ]
