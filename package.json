@@ -65,6 +65,21 @@
                 "icon": "$(refresh)"
             },
             {
+                "command": "github-trending.openDailyTrending",
+                "title": "%command.openDailyTrending.title%",
+                "icon": "$(github)"
+            },
+            {
+                "command": "github-trending.openWeeklyTrending",
+                "title": "%command.openWeeklyTrending.title%",
+                "icon": "$(github)"
+            },
+            {
+                "command": "github-trending.openMonthlyTrending",
+                "title": "%command.openMonthlyTrending.title%",
+                "icon": "$(github)"
+            },
+            {
                 "command": "github-trending.openInBrowser",
                 "title": "%command.openInBrowser.title%",
                 "icon": "$(globe)"
@@ -109,19 +124,34 @@
             ],
             "view/title": [
                 {
+                    "command": "github-trending.openDailyTrending",
+                    "when": "view == trendingDaily",
+                    "group": "navigation@0"
+                },
+                {
                     "command": "github-trending.dailyRefresh",
                     "when": "view == trendingDaily",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "github-trending.openWeeklyTrending",
+                    "when": "view == trendingWeekly",
                     "group": "navigation@0"
                 },
                 {
                     "command": "github-trending.weeklyRefresh",
                     "when": "view == trendingWeekly",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "github-trending.openMonthlyTrending",
+                    "when": "view == trendingMonthly",
                     "group": "navigation@0"
                 },
                 {
                     "command": "github-trending.monthlyRefresh",
                     "when": "view == trendingMonthly",
-                    "group": "navigation@0"
+                    "group": "navigation@1"
                 }
             ],
             "view/item/context": [

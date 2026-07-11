@@ -425,6 +425,21 @@ export const activate = (context: vscode.ExtensionContext): void => {
         vscode.commands.registerCommand('github-trending.monthlyRefresh', () => {
             monthlyView.provider.refresh();
         }),
+        vscode.commands.registerCommand('github-trending.openDailyTrending', async () => {
+            await vscode.env.openExternal(
+                vscode.Uri.parse('https://github.com/trending?since=daily'),
+            );
+        }),
+        vscode.commands.registerCommand('github-trending.openWeeklyTrending', async () => {
+            await vscode.env.openExternal(
+                vscode.Uri.parse('https://github.com/trending?since=weekly'),
+            );
+        }),
+        vscode.commands.registerCommand('github-trending.openMonthlyTrending', async () => {
+            await vscode.env.openExternal(
+                vscode.Uri.parse('https://github.com/trending?since=monthly'),
+            );
+        }),
         vscode.commands.registerCommand(
             'github-trending.select',
             async (userName: string, repoName: string) => {
