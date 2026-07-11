@@ -177,7 +177,9 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
                 const node = new vscode.TreeItem(repoName, vscode.TreeItemCollapsibleState.None);
                 node.description = details.join('    ');
                 node.tooltip = createTooltip(description, userName, repositoryUrl);
-                node.iconPath = getTreeIcon(language.toLowerCase());
+                const treeIcon = getTreeIcon(language);
+                node.iconPath = treeIcon.iconPath;
+                node.resourceUri = treeIcon.resourceUri;
                 node.command = {
                     command: 'github-trending.select',
                     title: repoName,
