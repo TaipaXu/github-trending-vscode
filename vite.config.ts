@@ -85,7 +85,7 @@ export default defineConfig(({ mode }) => ({
         outDir: 'out',
         sourcemap: mode !== 'production',
         ssr: 'src/extension.ts',
-        target: 'node24',
+        target: 'node20',
         rollupOptions: {
             external: ['vscode'],
             output: {
