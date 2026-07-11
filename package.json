@@ -86,11 +86,13 @@
                 },
                 {
                     "id": "trendingWeekly",
-                    "name": "Weekly"
+                    "name": "Weekly",
+                    "visibility": "collapsed"
                 },
                 {
                     "id": "trendingMonthly",
-                    "name": "Monthly"
+                    "name": "Monthly",
+                    "visibility": "collapsed"
                 }
             ]
         },

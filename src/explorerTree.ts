@@ -25,6 +25,15 @@ const normalizeText = (value: string): string => {
     return value.replace(/\s+/g, ' ').trim();
 };
 
+interface TooltipDetails {
+    description: string;
+    forkCount: string;
+    language: string;
+    repositoryUrl: string;
+    starCount: string;
+    userName: string;
+}
+
 const cacheTtl = 15 * 60 * 1000;
 const refreshRetryDelay = 60 * 1000;
 
@@ -33,17 +42,19 @@ interface CacheEntry {
     updatedAt: number;
 }
 
-const createTooltip = (
-    description: string,
-    userName: string,
-    repositoryUrl: string,
-): vscode.MarkdownString => {
+const createTooltip = (details: TooltipDetails): vscode.MarkdownString => {
     const tooltip = new vscode.MarkdownString(undefined, true);
-    tooltip.appendText(description || 'No description');
+    tooltip.appendText(details.description || 'No description');
     tooltip.appendMarkdown('\n\n**Author:** ');
-    tooltip.appendText(userName);
+    tooltip.appendText(details.userName);
+    tooltip.appendMarkdown('\n\n**Language:** ');
+    tooltip.appendText(details.language || 'Unknown');
+    tooltip.appendMarkdown('\n\n**Stars:** ');
+    tooltip.appendText(details.starCount || 'Unknown');
+    tooltip.appendMarkdown('\n\n**Forks:** ');
+    tooltip.appendText(details.forkCount || 'Unknown');
     tooltip.appendMarkdown('\n\n**Link:** ');
-    tooltip.appendMarkdown(`[${repositoryUrl}](${repositoryUrl})`);
+    tooltip.appendMarkdown(`[${details.repositoryUrl}](${details.repositoryUrl})`);
 
     return tooltip;
 };
@@ -168,15 +179,16 @@ export class ExplorerTree implements vscode.TreeDataProvider<vscode.TreeItem> {
                     $(item).find('span[itemprop="programmingLanguage"]').text(),
                 );
                 const repositoryUrl = `https://github.com${repositoryPath}`;
-                const details = [
-                    language,
-                    starCount ? `☆ ${starCount}` : '',
-                    forkCount ? `Fork ${forkCount}` : '',
-                ].filter(Boolean);
-
                 const node = new vscode.TreeItem(repoName, vscode.TreeItemCollapsibleState.None);
-                node.description = details.join('    ');
-                node.tooltip = createTooltip(description, userName, repositoryUrl);
+                node.description = starCount ? `☆ ${starCount}` : undefined;
+                node.tooltip = createTooltip({
+                    description,
+                    forkCount,
+                    language,
+                    repositoryUrl,
+                    starCount,
+                    userName,
+                });
                 const treeIcon = getTreeIcon(language);
                 node.iconPath = treeIcon.iconPath;
                 node.resourceUri = treeIcon.resourceUri;
